@@ -1,13 +1,16 @@
 # Task Management API (Backend)
 
-Backend service untuk Task Management App, menggunakan **Azure Functions** dan **Cosmos DB**, ditulis dengan **TypeScript**.
+Backend service untuk Task Management App, menggunakan **Azure Functions** dan **Cosmos DB**, ditulis dengan *
+*TypeScript**.
 
 ---
 
 ## 🚀 Getting Started
 
 ### 1️⃣ Install dependencies
+
 Gunakan [Bun](https://bun.sh) untuk menginstall dependencies:
+
 ```bash
 bun install
 ```
@@ -55,6 +58,30 @@ Buat file `local.settings.json` (untuk lokal) dengan struktur berikut:
 
 ---
 
+## 🔧 Cosmos DB Setup
+
+Untuk menjalankan aplikasi secara lokal, kamu membutuhkan Azure Cosmos DB. Terdapat dua opsi:
+
+### ✅ 1. Menggunakan Cosmos DB Emulator (Lokal)
+
+- Unduh dan install emulator dari:  
+  [https://learn.microsoft.com/azure/cosmos-db/local-emulator](https://learn.microsoft.com/azure/cosmos-db/local-emulator)
+- Setelah emulator berjalan, gunakan connection string ini di `local.settings.json`:
+  ```json
+  {
+    "COSMOS_DB_CONNECTION_STRING": "AccountEndpoint=https://localhost:8081/;AccountKey=YOUR_KEY_HERE"
+  }
+  ```
+
+### ✅ 2. Menggunakan Cosmos DB di Azure
+
+- Login ke [Azure Portal](https://portal.azure.com)
+- Buat resource Cosmos DB (Core SQL)
+- Salin connection string dari menu **"Keys"**
+- Masukkan ke `local.settings.json` pada key `COSMOS_DB_CONNECTION_STRING`
+
+---
+
 ## 🛠️ Tech Stack
 
 * **Runtime:** Azure Functions (Node.js)
@@ -73,7 +100,7 @@ Semua endpoint mengikuti format respons berikut:
 {
   "success": true,
   "message": "Request processed successfully",
-  "result": { }
+  "result": {}
 }
 ```
 
