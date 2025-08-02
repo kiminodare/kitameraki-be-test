@@ -11,21 +11,28 @@ const handler: TypedHandler<GetFormSettingsInput, FormSettings> = async (_input,
     const container = cosmosClient.database("TaskApp").container("FormSettings");
 
     try {
-        const {resource} = await container
+        const { resource } = await container
             .item("form-settings", "form-settings")
             .read<FormSettings>();
 
-        const fields = (resource?.fields ?? []).sort((a, b) => a.orderNumber - b.orderNumber);
+        if (!resource) {
+            ctx.warn("Form settings item not found — using fallback");
+            const defaults = generateDefaultFormFields();
+            return ok({
+                id: "form-settings",
+                fields: defaults,
+            });
+        }
+
+        const fields = (resource.fields ?? []).sort((a, b) => a.orderNumber - b.orderNumber);
         ctx.info("Form settings found", fields);
         return ok({
             id: "form-settings",
             fields,
         });
     } catch (err) {
-        ctx.warn("Form settings not found or error — using fallback", err);
-
+        ctx.warn("Error accessing form settings — using fallback", err);
         const defaults = generateDefaultFormFields();
-
         return ok({
             id: "form-settings",
             fields: defaults,
