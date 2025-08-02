@@ -1,24 +1,34 @@
-import { CosmosClient } from "@azure/cosmos";
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+// functions/BulkDeleteTasks.ts
+import { app } from "@azure/functions";
+import { withValidation } from "../lib/withValidation";
+import { withMiddleware } from "../lib/withMiddleware";
+import { fail, ok } from "../lib/response";
+import { cosmosClient } from "../lib/cosmosClient";
+import { DeleteTasksDto, RequestDeleteTasksDto } from "../dtos/RequestDeleteTasks.dto";
 
-export async function BulkDeleteTasks(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    context.log(`Http function processed request for url "${request.url}"`);
-    const body = await request.json() as string[];
-    const organizationId = request.query.get('organizationId');
+const handler: TypedHandler<DeleteTasksDto, null> = async (input, req, ctx) => {
+    const { organizationId, ids } = input;
 
-    const client = new CosmosClient("this is a connection string");
-    body.forEach(async element => {
-        await client.database("TaskApp")
-        .container("Tasks")
-        .item(element, organizationId)
-        .delete();
-    });
+    try {
+        const promises = ids.map((id) =>
+            cosmosClient
+                .database("TaskApp")
+                .container("Tasks")
+                .item(id, organizationId)
+                .delete()
+        );
 
-    return { status: 200 };
+        await Promise.all(promises);
+
+        return ok(null, "Tasks deleted successfully");
+    } catch (err: any) {
+        ctx.error("Bulk delete error", err);
+        return fail("Failed to delete tasks", 500);
+    }
 };
 
-app.http('BulkDeleteTasks', {
-    methods: ['DELETE'],
-    authLevel: 'anonymous',
-    handler: BulkDeleteTasks
+app.http("BulkDeleteTasks", {
+    methods: ["DELETE"],
+    authLevel: "anonymous",
+    handler: withMiddleware(withValidation(RequestDeleteTasksDto, handler))
 });

@@ -1,33 +1,105 @@
-import { CosmosClient } from "@azure/cosmos";
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+// functions/UpdateTask.ts
+import {app} from "@azure/functions";
+import {fail, ok} from "../lib/response";
+import {withMiddleware} from "../lib/withMiddleware";
+import {cosmosClient} from "../lib/cosmosClient";
+import {RequestUpdateTaskDto} from "../dtos/RequestUpdateTaskDto";
+import {generateZodFromFields} from "../lib/generateZodFromFormSettings";
+import {FormSettings} from "../types/formSettings.types";
+import {PatchOperation} from "@azure/cosmos";
+import {mergeSchemas} from "../lib/mergeSchemas";
+import {formatZodErrors} from "../lib/formatZodErrors";
 
+const handler: TypedHandler<unknown, null> = async (_, req, ctx) => {
+    const body = await req.json();
 
-export async function UpdateTask(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    const body = await request.json() as object;
-    const taskId = request.query.get('id');
-    const organizationId = request.query.get('organizationId');
+    let schema = RequestUpdateTaskDto;
 
-    let patchRequests = [];
+    try {
+        const {resource: settings} = await cosmosClient
+            .database("TaskApp")
+            .container("FormSettings")
+            .item("form-settings", "form-settings")
+            .read<FormSettings>();
 
-    for (let key in body) {
-        patchRequests.push({
-            "op": "replace",
-            "path": `/${key}`,
-            "value": body[key]
-        });
+        if (settings?.fields?.length) {
+            const dynamicSchema = generateZodFromFields(settings.fields).partial(); // patch = optional
+            schema = mergeSchemas(RequestUpdateTaskDto, dynamicSchema.shape);
+        } else {
+            ctx.warn("No fields found in FormSettings. Using fallback schema.");
+        }
+    } catch (err) {
+        ctx.warn("Failed to load FormSettings — using fallback schema");
     }
 
-    const client = new CosmosClient("this is a connection string");
-    const createdTask = await client.database("TaskApp")
-        .container("Tasks")
-        .item(taskId, organizationId)
-        .patch(patchRequests);
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+        const issues = formatZodErrors(parsed.error);
+        ctx.warn("Validation failed", issues);
+        return fail("Validation failed", 400, issues);
+    }
 
-    return { jsonBody: createdTask.resource, status: 200 };
+    const input = parsed.data;
+    const {id, organizationId, ...updates} = input;
+
+    if (!id || !organizationId) {
+        return fail("Missing 'id' or 'organizationId'", 400);
+    }
+
+    if (Object.keys(updates).length === 0) {
+        return fail("No update fields provided", 400);
+    }
+
+    let existingDoc: Record<string, unknown>;
+
+    try {
+        const {resource} = await cosmosClient
+            .database("TaskApp")
+            .container("Tasks")
+            .item(id, organizationId)
+            .read();
+
+        if (!resource) {
+            return fail("Task not found", 404);
+        }
+
+        existingDoc = resource;
+    } catch (err) {
+        ctx.error("Failed to fetch existing task", err);
+        return fail("Task not found", 404);
+    }
+
+    const patchRequests: PatchOperation[] = Object.entries(updates).map(
+        ([key, value]) => ({
+            op: key in existingDoc ? "replace" : "add",
+            path: `/${key}`,
+            value,
+        })
+    );
+
+    try {
+        const {resource} = await cosmosClient
+            .database("TaskApp")
+            .container("Tasks")
+            .item(id, organizationId)
+            .patch(patchRequests);
+
+        if (!resource) {
+            return fail("Task not found after patch", 404);
+        }
+
+        return ok(null, "Task updated successfully");
+    } catch (err: any) {
+        ctx.error("Update task error", err);
+        return fail("Failed to update task", 500);
+    }
 };
 
-app.http('UpdateTask', {
-    methods: ['POST'],
-    authLevel: 'anonymous',
-    handler: UpdateTask
+const adaptedHandler = async (req: any, ctx: any) =>
+    handler(undefined, req, ctx);
+
+app.http("UpdateTask", {
+    methods: ["PATCH"],
+    authLevel: "anonymous",
+    handler: withMiddleware(adaptedHandler),
 });

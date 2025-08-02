@@ -1,23 +1,40 @@
-import { CosmosClient } from "@azure/cosmos";
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+// functions/DeleteTask.ts
+import { app } from "@azure/functions";
+import { withValidation } from "../lib/withValidation";
+import { withMiddleware } from "../lib/withMiddleware";
+import { fail, ok } from "../lib/response";
+import { cosmosClient } from "../lib/cosmosClient";
+import { RequestDeleteTaskDto, DeleteTaskDto } from "../dtos/RequestDeleteTask.dto";
 
-export async function DeleteTask(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    context.log(`Http function processed request for url "${request.url}"`);
+const handler: TypedHandler<DeleteTaskDto, null> = async (input, req, ctx) => {
+    const { id, organizationId } = input;
 
-    const taskId = request.query.get('id');
-    const organizationId = request.query.get('organizationId');
+    try {
+        const { resource } = await cosmosClient
+            .database("TaskApp")
+            .container("Tasks")
+            .item(id, organizationId)
+            .read();
 
-    const client = new CosmosClient("this is a connection string");
-    await client.database("TaskApp")
-        .container("Tasks")
-        .item(taskId, organizationId)
-        .delete();
+        if (!resource) {
+            return fail("Task not found", 404);
+        }
 
-    return { status: 200 };
+        await cosmosClient
+            .database("TaskApp")
+            .container("Tasks")
+            .item(id, organizationId)
+            .delete();
+
+        return ok(null, "Task deleted successfully");
+    } catch (err: any) {
+        ctx.error("Error deleting task", err);
+        return fail("Failed to delete task", 500);
+    }
 };
 
-app.http('DeleteTask', {
-    methods: ['DELETE'],
-    authLevel: 'anonymous',
-    handler: DeleteTask
+app.http("DeleteTask", {
+    methods: ["DELETE"],
+    authLevel: "anonymous",
+    handler: withMiddleware(withValidation(RequestDeleteTaskDto, handler))
 });
