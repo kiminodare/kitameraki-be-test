@@ -29,7 +29,9 @@ const handler: TypedHandler<unknown, null> = async (_, req, ctx) => {
             schema = mergeSchemas(RequestInsertTaskDto, dynamic.shape);
         }
     } catch (err) {
-        ctx.warn("Dynamic schema load failed or not found — fallback to DTO");
+        ctx.warn("Dynamic schema load failed or not found — fallback to DTO", {
+            error: err instanceof Error ? err.message : err,
+        });
     }
 
     // STEP 3: Validate

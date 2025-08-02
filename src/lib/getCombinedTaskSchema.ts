@@ -32,5 +32,5 @@ export async function getCombinedTaskSchema(): Promise<{
     cachedSchema = TaskDto.extend(dynamicSchema.shape);
     cachedNormalize = normalize;
 
-    return { schema: cachedSchema, normalize: cachedNormalize! };
+    return { schema: cachedSchema, normalize: cachedNormalize };
 }

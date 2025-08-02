@@ -1,10 +1,10 @@
 // lib/withValidation.ts
-import { ZodSchema } from "zod";
-import { HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
-import { isObject } from "./isObject";
-import { ApiResponse } from "../dtos/ApiResponse.dto";
-import { MiddlewareHandler } from "./withMiddleware";
-import { formatZodErrors } from "./formatZodErrors";
+import {ZodType} from "zod";
+import {HttpRequest, HttpResponseInit, InvocationContext} from "@azure/functions";
+import {isObject} from "./isObject";
+import {ApiResponse} from "../dtos/ApiResponse.dto";
+import {MiddlewareHandler} from "./withMiddleware";
+import {formatZodErrors} from "./formatZodErrors";
 
 // Handler function that expects validated input and returns typed ApiResponse
 export type ValidatedHandler<TInput, TData> = (
@@ -20,7 +20,7 @@ export type ValidatedHandler<TInput, TData> = (
  * - Returns 400 on validation error with formatted issue
  */
 export function withValidation<TInput, TData>(
-    schema: ZodSchema<TInput>,
+    schema: ZodType<TInput>,
     handler: ValidatedHandler<TInput, TData>
 ): MiddlewareHandler<TData> {
     return async (req: HttpRequest, ctx: InvocationContext) => {

@@ -18,7 +18,7 @@ export function withMiddleware<T>(handler: MiddlewareHandler<T>): MiddlewareHand
                 ...response,
                 headers: {
                     "Content-Type": "application/json",
-                    ...(response.headers || {})
+                    ...(response.headers ?? {})
                 }
             };
         } catch (err: any) {
@@ -28,7 +28,7 @@ export function withMiddleware<T>(handler: MiddlewareHandler<T>): MiddlewareHand
                 status: 500,
                 jsonBody: {
                     status: false,
-                    message: err?.message || "Internal Server Error",
+                    message: err?.message ?? "Internal Server Error",
                     issues: err?.issues,
                     result: null
                 }

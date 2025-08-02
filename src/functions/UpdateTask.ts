@@ -29,7 +29,9 @@ const handler: TypedHandler<unknown, null> = async (_, req, ctx) => {
             ctx.warn("No fields found in FormSettings. Using fallback schema.");
         }
     } catch (err) {
-        ctx.warn("Failed to load FormSettings — using fallback schema");
+        ctx.warn("Dynamic schema load failed or not found — fallback to DTO", {
+            error: err instanceof Error ? err.message : err,
+        });
     }
 
     const parsed = schema.safeParse(body);

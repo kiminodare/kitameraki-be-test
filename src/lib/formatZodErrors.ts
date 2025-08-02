@@ -1,16 +1,14 @@
 import { ZodError } from "zod";
 
 export function formatZodErrors(error: ZodError<any>) {
-    const formatted = error.format();
     const result: Record<string, string[]> = {};
 
-    for (const key in formatted) {
-        if (key !== "_errors") {
-            const fieldErrors = formatted[key]?._errors;
-            if (fieldErrors?.length) {
-                result[key] = fieldErrors;
-            }
+    for (const issue of error.issues) {
+        const key = issue.path.join(".");
+        if (!result[key]) {
+            result[key] = [];
         }
+        result[key].push(issue.message);
     }
 
     return result;

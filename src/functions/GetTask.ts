@@ -33,7 +33,7 @@ const handler: TypedHandler<GetTaskInput, z.infer<typeof TaskDto>> = async (
     const validated = CombinedTaskSchema.safeParse(patchedResource);
     if (!validated.success) {
         ctx.warn("Validation failed for task:", JSON.stringify(patchedResource, null, 2));
-        ctx.warn("Zod error:", JSON.stringify(validated.error.format(), null, 2));
+        ctx.warn("Zod error:", JSON.stringify(validated.error.issues, null, 2));
         return fail("Invalid task data", 500);
     }
 

@@ -1,16 +1,16 @@
-import { z, ZodTypeAny } from "zod";
+import { z, ZodType } from "zod";
 import { FormSettings } from "../types/formSettings.types";
 
 export function buildCustomFieldsSchema(fields: FormSettings["fields"]) {
-    const shape: { [key: string]: ZodTypeAny } = {};
+    const shape: { [key: string]: ZodType } = {};
     const fieldIds = fields.map((f) => f.id);
 
     for (const field of fields) {
-        let fieldSchema: ZodTypeAny;
+        let fieldSchema: ZodType;
 
         switch (field.type) {
             case "email":
-                fieldSchema = z.string().email();
+                fieldSchema = z.email();
                 break;
             case "date":
             case "datetime":
